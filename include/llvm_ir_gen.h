@@ -41,6 +41,7 @@ namespace lg::llvm_ir_gen
         llvm::IRBuilder<>* builder;
         llvm::Function* currentFunction = nullptr;
         std::stack<std::any> stack;
+        std::unordered_map<ir::base::IRGlobalVariable*, llvm::GlobalVariable*> irGlobalVariable2LLVMGlobalVariable;
         std::unordered_map<ir::base::IRBasicBlock*, llvm::BasicBlock*> irBlock2LLVMBlock;
         std::unordered_map<ir::value::IRRegister*, llvm::Value*> register2Value;
     public:
@@ -49,9 +50,10 @@ namespace lg::llvm_ir_gen
         std::string generate();
 
         std::any visitModule(ir::IRModule* module, std::any additional) override;
+        std::any visitGlobalVariable(ir::base::IRGlobalVariable* irGlobalVariable, std::any additional) override;
         std::any visitFunction(ir::function::IRFunction* irFunction, std::any additional) override;
         std::any visitBinaryOperates(ir::instruction::IRBinaryOperates* irBinaryOperates, std::any additional) override;
-        // std::any visitGetElementPointer(ir::instruction::IRGetElementPointer* irGetElementPointer, std::any additional) override;
+        std::any visitGetElementPointer(ir::instruction::IRGetElementPointer* irGetElementPointer, std::any additional) override;
         std::any visitCompare(ir::instruction::IRCompare* irCompare, std::any additional) override;
         std::any visitConditionalJump(ir::instruction::IRConditionalJump* irConditionalJump, std::any additional) override;
         std::any visitGoto(ir::instruction::IRGoto* irGoto, std::any additional) override;

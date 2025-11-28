@@ -27,6 +27,24 @@ namespace lg::llvm_ir_gen
 
     std::any LLVMIRGenerator::visitModule(ir::IRModule* module, std::any additional)
     {
+        for (const auto& global : module->globals | std::views::values)
+        {
+            visit(global->type, additional);
+            auto* type = std::any_cast<llvm::Type*>(stack.top());
+            stack.pop();
+            irGlobalVariable2LLVMGlobalVariable[global] = new llvm::GlobalVariable(
+                *llvmModule,
+                type,
+                global->isConstant,
+                llvm::GlobalValue::ExternalLinkage,
+                nullptr,
+                global->name
+            );
+        }
+        for (const auto& global : module->globals | std::views::values)
+        {
+            visit(global, additional);
+        }
         for (const auto& func : module->functions | std::views::values)
         {
             visit(func->returnType, additional);
@@ -54,6 +72,17 @@ namespace lg::llvm_ir_gen
         }
         return nullptr;
     }
+
+    std::any LLVMIRGenerator::visitGlobalVariable(ir::base::IRGlobalVariable* irGlobalVariable, std::any additional)
+    {
+        visit(irGlobalVariable->initializer, additional);
+        auto* value = std::any_cast<llvm::Value*>(stack.top());
+        auto* initializer = llvm::dyn_cast<llvm::Constant>(value);
+        if (initializer == nullptr) throw std::runtime_error("unsupported type");
+        irGlobalVariable2LLVMGlobalVariable[irGlobalVariable]->setInitializer(initializer);
+        return nullptr;
+    }
+
 
     std::any LLVMIRGenerator::visitFunction(ir::function::IRFunction* irFunction, std::any additional)
     {
@@ -174,6 +203,28 @@ namespace lg::llvm_ir_gen
             }
         }
         register2Value[irBinaryOperates->target] = result;
+        return nullptr;
+    }
+
+    std::any LLVMIRGenerator::visitGetElementPointer(ir::instruction::IRGetElementPointer* irGetElementPointer,
+                                                     std::any additional)
+    {
+        visit(dynamic_cast<ir::type::IRPointerType*>(irGetElementPointer->pointer->getType())->base, additional);
+        auto* type = std::any_cast<llvm::Type*>(stack.top());
+        stack.pop();
+        visit(irGetElementPointer->pointer, additional);
+        auto* ptr = std::any_cast<llvm::Value*>(stack.top());
+        stack.pop();
+        std::vector<llvm::Value*> indices(irGetElementPointer->indices.size());
+        for (const auto& index : irGetElementPointer->indices)
+        {
+            visit(index, additional);
+            auto* indexValue = std::any_cast<llvm::Value*>(stack.top());
+            stack.pop();
+            indices.push_back(indexValue);
+        }
+        auto* result = builder->CreateGEP(type, ptr, std::move(indices));
+        register2Value[irGetElementPointer->target] = result;
         return nullptr;
     }
 
