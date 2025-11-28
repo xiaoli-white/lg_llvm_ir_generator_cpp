@@ -41,6 +41,7 @@ namespace lg::llvm_ir_gen
         llvm::IRBuilder<>* builder;
         llvm::Function* currentFunction = nullptr;
         std::stack<std::any> stack;
+        std::unordered_map<ir::base::IRBasicBlock*, llvm::BasicBlock*> irBlock2LLVMBlock;
         std::unordered_map<ir::value::IRRegister*, llvm::Value*> register2Value;
     public:
         LLVMIRGenerator(ir::IRModule* module,llvm::LLVMContext* context, llvm::Module* llvmModule);
@@ -50,6 +51,10 @@ namespace lg::llvm_ir_gen
         std::any visitModule(ir::IRModule* module, std::any additional) override;
         std::any visitFunction(ir::function::IRFunction* irFunction, std::any additional) override;
         std::any visitBinaryOperates(ir::instruction::IRBinaryOperates* irBinaryOperates, std::any additional) override;
+        // std::any visitGetElementPointer(ir::instruction::IRGetElementPointer* irGetElementPointer, std::any additional) override;
+        std::any visitCompare(ir::instruction::IRCompare* irCompare, std::any additional) override;
+        std::any visitConditionalJump(ir::instruction::IRConditionalJump* irConditionalJump, std::any additional) override;
+        std::any visitGoto(ir::instruction::IRGoto* irGoto, std::any additional) override;
         std::any visitReturn(ir::instruction::IRReturn* irReturn, std::any additional) override;
         std::any visitRegister(ir::value::IRRegister* irRegister, std::any additional) override;
         std::any visitIntegerConstant(ir::value::constant::IRIntegerConstant* irIntegerConstant, std::any additional) override;

@@ -27,7 +27,7 @@ target_link_libraries(lg_llvm_ir_generator_cpp PRIVATE
         clang-cpp
         LLVM
 )
-target_link_libraries(lg_llvm_ir_generator_cpp PRIVATE lg_cpp_binding)
+target_link_libraries(lg_llvm_ir_generator_cpp PRIVATE lg)
 
 if (WIN32)
     target_compile_definitions(llvm_ir_generator PRIVATE _WINDLL _MBCS)

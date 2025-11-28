@@ -27,10 +27,10 @@ namespace lg::llvm_ir_gen
 
     std::any LLVMIRGenerator::visitModule(ir::IRModule* module, std::any additional)
     {
-        for (auto& func : module->functions | std::views::values)
+        for (const auto& func : module->functions | std::views::values)
         {
             visit(func->returnType, additional);
-            auto returnType = std::any_cast<llvm::Type*>(stack.top());
+            const auto returnType = std::any_cast<llvm::Type*>(stack.top());
             stack.pop();
             std::vector<llvm::Type*> args;
             for (auto& arg : func->args)
@@ -39,7 +39,7 @@ namespace lg::llvm_ir_gen
                 args.push_back(std::any_cast<llvm::Type*>(stack.top()));
                 stack.pop();
             }
-            auto functionType = llvm::FunctionType::get(returnType, args, false);
+            const auto functionType = llvm::FunctionType::get(returnType, args, false);
             llvm::Function* llvmFunction = llvm::Function::Create(
                 functionType,
                 llvm::Function::ExternalLinkage,
@@ -48,7 +48,7 @@ namespace lg::llvm_ir_gen
             );
             for (auto& arg : llvmFunction->args())arg.setName(func->args[arg.getArgNo()]->name);
         }
-        for (auto& func : module->functions | std::views::values)
+        for (const auto& func : module->functions | std::views::values)
         {
             visit(func, additional);
         }
@@ -58,12 +58,17 @@ namespace lg::llvm_ir_gen
     std::any LLVMIRGenerator::visitFunction(ir::function::IRFunction* irFunction, std::any additional)
     {
         currentFunction = llvmModule->getFunction(irFunction->name);
-        for (auto& block : irFunction->cfg->basicBlocks | std::views::values)
+        for (const auto& block : irFunction->cfg->basicBlocks | std::views::values)
         {
             llvm::BasicBlock* llvmBlock = llvm::BasicBlock::Create(*context, block->name, currentFunction);
-            builder->SetInsertPoint(llvmBlock);
-            for (auto& instruction : block->instructions)visit(instruction, additional);
+            irBlock2LLVMBlock[block] = llvmBlock;
         }
+        for (const auto& block : irFunction->cfg->basicBlocks | std::views::values)
+        {
+            builder->SetInsertPoint(irBlock2LLVMBlock[block]);
+            for (const auto& instruction : block->instructions)visit(instruction, additional);
+        }
+        irBlock2LLVMBlock.clear();
         register2Value.clear();
         return nullptr;
     }
@@ -172,6 +177,206 @@ namespace lg::llvm_ir_gen
         return nullptr;
     }
 
+    std::any LLVMIRGenerator::visitCompare(ir::instruction::IRCompare* irCompare, std::any additional)
+    {
+        visit(irCompare->operand1, additional);
+        auto* operand1 = std::any_cast<llvm::Value*>(stack.top());
+        stack.pop();
+        visit(irCompare->operand2, additional);
+        auto* operand2 = std::any_cast<llvm::Value*>(stack.top());
+        stack.pop();
+        bool isInteger;
+        bool isUnsigned;
+        if (const auto* integerType = dynamic_cast<ir::type::IRIntegerType*>(irCompare->operand1->getType()))
+        {
+            isInteger = true;
+            isUnsigned = integerType->_unsigned;
+        }
+        else
+        {
+            isInteger = false;
+            isUnsigned = false;
+        }
+        llvm::CmpInst::Predicate predicate;
+        switch (irCompare->condition)
+        {
+        case ir::base::IRCondition::E:
+            {
+                if (isInteger)
+                    predicate = llvm::CmpInst::Predicate::ICMP_EQ;
+                else
+                    predicate = llvm::CmpInst::Predicate::FCMP_OEQ;
+                break;
+            }
+        case ir::base::IRCondition::NE:
+            {
+                if (isInteger)
+                    predicate = llvm::CmpInst::Predicate::ICMP_NE;
+                else
+                    predicate = llvm::CmpInst::Predicate::FCMP_ONE;
+                break;
+            }
+        case ir::base::IRCondition::L:
+            {
+                if (isInteger)
+                    if (isUnsigned) predicate = llvm::CmpInst::Predicate::ICMP_ULT;
+                    else predicate = llvm::CmpInst::Predicate::ICMP_SLT;
+                else
+                    predicate = llvm::CmpInst::Predicate::FCMP_ULT;
+                break;
+            }
+        case ir::base::IRCondition::LE:
+            {
+                if (isInteger)
+                    if (isUnsigned) predicate = llvm::CmpInst::Predicate::ICMP_ULE;
+                    else predicate = llvm::CmpInst::Predicate::ICMP_SLE;
+                else
+                    predicate = llvm::CmpInst::Predicate::FCMP_ULE;
+                break;
+            }
+        case ir::base::IRCondition::G:
+            {
+                if (isInteger)
+                    if (isUnsigned) predicate = llvm::CmpInst::Predicate::ICMP_UGT;
+                    else predicate = llvm::CmpInst::Predicate::ICMP_SGT;
+                else
+                    predicate = llvm::CmpInst::Predicate::FCMP_UGT;
+                break;
+            }
+        case ir::base::IRCondition::GE:
+            {
+                if (isInteger)
+                    if (isUnsigned) predicate = llvm::CmpInst::Predicate::ICMP_UGE;
+                    else predicate = llvm::CmpInst::Predicate::ICMP_SGE;
+                else
+                    predicate = llvm::CmpInst::Predicate::FCMP_UGE;
+                break;
+            }
+        default:
+            {
+                throw std::runtime_error("unsupported condition: " + ir::base::conditionToString(irCompare->condition));
+            }
+        }
+        auto* result = builder->CreateCmp(predicate, operand1, operand2);
+        register2Value[irCompare->target] = result;
+        return nullptr;
+    }
+
+    std::any LLVMIRGenerator::visitConditionalJump(ir::instruction::IRConditionalJump* irConditionalJump,
+                                                   std::any additional)
+    {
+        visit(irConditionalJump->operand1, additional);
+        auto* operand1 = std::any_cast<llvm::Value*>(stack.top());
+        stack.pop();
+        llvm::Value* cond;
+        if (irConditionalJump->operand2 != nullptr)
+        {
+            visit(irConditionalJump->operand2, additional);
+            auto* operand2 = std::any_cast<llvm::Value*>(stack.top());
+            stack.pop();
+            bool isInteger;
+            bool isUnsigned;
+            if (const auto* integerType = dynamic_cast<ir::type::IRIntegerType*>(irConditionalJump->operand1->
+                getType()))
+            {
+                isInteger = true;
+                isUnsigned = integerType->_unsigned;
+            }
+            else
+            {
+                isInteger = false;
+                isUnsigned = false;
+            }
+            llvm::CmpInst::Predicate predicate;
+            switch (irConditionalJump->condition)
+            {
+            case ir::base::IRCondition::E:
+                {
+                    if (isInteger)
+                        predicate = llvm::CmpInst::Predicate::ICMP_EQ;
+                    else
+                        predicate = llvm::CmpInst::Predicate::FCMP_OEQ;
+                    break;
+                }
+            case ir::base::IRCondition::NE:
+                {
+                    if (isInteger)
+                        predicate = llvm::CmpInst::Predicate::ICMP_NE;
+                    else
+                        predicate = llvm::CmpInst::Predicate::FCMP_ONE;
+                    break;
+                }
+            case ir::base::IRCondition::L:
+                {
+                    if (isInteger)
+                        if (isUnsigned) predicate = llvm::CmpInst::Predicate::ICMP_ULT;
+                        else predicate = llvm::CmpInst::Predicate::ICMP_SLT;
+                    else
+                        predicate = llvm::CmpInst::Predicate::FCMP_ULT;
+                    break;
+                }
+            case ir::base::IRCondition::LE:
+                {
+                    if (isInteger)
+                        if (isUnsigned) predicate = llvm::CmpInst::Predicate::ICMP_ULE;
+                        else predicate = llvm::CmpInst::Predicate::ICMP_SLE;
+                    else
+                        predicate = llvm::CmpInst::Predicate::FCMP_ULE;
+                    break;
+                }
+            case ir::base::IRCondition::G:
+                {
+                    if (isInteger)
+                        if (isUnsigned) predicate = llvm::CmpInst::Predicate::ICMP_UGT;
+                        else predicate = llvm::CmpInst::Predicate::ICMP_SGT;
+                    else
+                        predicate = llvm::CmpInst::Predicate::FCMP_UGT;
+                    break;
+                }
+            case ir::base::IRCondition::GE:
+                {
+                    if (isInteger)
+                        if (isUnsigned) predicate = llvm::CmpInst::Predicate::ICMP_UGE;
+                        else predicate = llvm::CmpInst::Predicate::ICMP_SGE;
+                    else
+                        predicate = llvm::CmpInst::Predicate::FCMP_UGE;
+                    break;
+                }
+            default:
+                {
+                    throw std::runtime_error(
+                        "unsupported condition: " + ir::base::conditionToString(irConditionalJump->condition));
+                }
+            }
+            cond = builder->CreateCmp(predicate, operand1, operand2);
+        }
+        else
+        {
+            if (irConditionalJump->condition == ir::base::IRCondition::IF_TRUE)
+            {
+                cond = operand1;
+            }
+            else if (irConditionalJump->condition == ir::base::IRCondition::IF_FALSE)
+            {
+                cond = builder->CreateNot(operand1);
+            }
+            else
+            {
+                throw std::runtime_error(
+                    "unsupported condition: " + ir::base::conditionToString(irConditionalJump->condition));
+            }
+        }
+        builder->CreateCondBr(cond, irBlock2LLVMBlock[irConditionalJump->target],
+                              builder->GetInsertBlock()->getNextNode());
+        return nullptr;
+    }
+
+
+    std::any LLVMIRGenerator::visitGoto(ir::instruction::IRGoto* irGoto, std::any additional)
+    {
+        builder->CreateBr(irBlock2LLVMBlock[irGoto->target]);
+        return nullptr;
+    }
 
     std::any LLVMIRGenerator::visitReturn(ir::instruction::IRReturn* irReturn, std::any additional)
     {
