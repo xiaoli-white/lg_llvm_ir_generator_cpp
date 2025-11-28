@@ -507,6 +507,27 @@ namespace lg::llvm_ir_gen
         return nullptr;
     }
 
+    std::any LLVMIRGenerator::visitStackAllocate(ir::instruction::IRStackAllocate* irStackAllocate, std::any additional)
+    {
+        visit(irStackAllocate->type, additional);
+        auto* ty = std::any_cast<llvm::Type*>(stack.top());
+        stack.pop();
+        llvm::Value* size;
+        if (irStackAllocate->size != nullptr)
+        {
+            visit(irStackAllocate->size, additional);
+            size = std::any_cast<llvm::Value*>(stack.top());
+            stack.pop();
+        }
+        else
+        {
+            size = nullptr;
+        }
+        auto* result = builder->CreateAlloca(ty, size);
+        register2Value[irStackAllocate->target] = result;
+        return nullptr;
+    }
+
     std::any LLVMIRGenerator::visitRegister(ir::value::IRRegister* irRegister, std::any additional)
     {
         stack.emplace(register2Value[irRegister]);
