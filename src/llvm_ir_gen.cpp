@@ -469,6 +469,44 @@ namespace lg::llvm_ir_gen
         return nullptr;
     }
 
+    std::any LLVMIRGenerator::visitLoad(ir::instruction::IRLoad* irLoad, std::any additional)
+    {
+        visit(dynamic_cast<ir::type::IRPointerType*>(irLoad->ptr->getType())->base, additional);
+        auto* ty = std::any_cast<llvm::Type*>(stack.top());
+        stack.pop();
+        visit(irLoad->ptr, additional);
+        auto* ptr = std::any_cast<llvm::Value*>(stack.top());
+        stack.pop();
+        auto* result = builder->CreateLoad(ty, ptr);
+        register2Value[irLoad->target] = result;
+        return nullptr;
+    }
+
+    std::any LLVMIRGenerator::visitStore(ir::instruction::IRStore* irStore, std::any additional)
+    {
+        visit(irStore->ptr, additional);
+        auto* ptr = std::any_cast<llvm::Value*>(stack.top());
+        stack.pop();
+        visit(irStore->value, additional);
+        auto* value = std::any_cast<llvm::Value*>(stack.top());
+        stack.pop();
+        builder->CreateStore(value, ptr);
+        return nullptr;
+    }
+
+    std::any LLVMIRGenerator::visitNop(ir::instruction::IRNop* irNop, std::any additional)
+    {
+        return nullptr;
+    }
+
+    std::any LLVMIRGenerator::visitSetRegister(ir::instruction::IRSetRegister* irSetRegister, std::any additional)
+    {
+        visit(irSetRegister->value, additional);
+        register2Value[irSetRegister->target] = std::any_cast<llvm::Value*>(stack.top());
+        stack.pop();
+        return nullptr;
+    }
+
     std::any LLVMIRGenerator::visitRegister(ir::value::IRRegister* irRegister, std::any additional)
     {
         stack.emplace(register2Value[irRegister]);

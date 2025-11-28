@@ -12,6 +12,7 @@ int main()
                        "entry:"
                        "\t%1 = add i32 1, i32 2"
                        "\t%2 = cmp le, i32 1, i32 2"
+                       "\tnop"
                        "\tconditional_jump if_false, i1 %2, label exit "
                        // "\tgoto label exit "
                        "exit:"
