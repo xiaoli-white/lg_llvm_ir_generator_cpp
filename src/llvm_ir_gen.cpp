@@ -429,6 +429,31 @@ namespace lg::llvm_ir_gen
         return nullptr;
     }
 
+    std::any LLVMIRGenerator::visitInvoke(ir::instruction::IRInvoke* irInvoke, std::any additional)
+    {
+        visit(irInvoke->func->getType(), additional);
+        auto* ty = std::any_cast<llvm::Type*>(stack.top());
+        stack.pop();
+        auto* funcType = llvm::cast<llvm::FunctionType>(ty);
+        visit(irInvoke->func, additional);
+        auto* func = std::any_cast<llvm::Value*>(stack.top());
+        stack.pop();
+        std::vector<llvm::Value*> args;
+        for (auto* arg : irInvoke->arguments)
+        {
+            visit(arg, additional);
+            args.push_back(std::any_cast<llvm::Value*>(stack.top()));
+            stack.pop();
+        }
+        auto* result = builder->CreateCall(funcType, func, args);
+        if (irInvoke->target != nullptr)
+        {
+            register2Value[irInvoke->target] = result;
+        }
+        return nullptr;
+    }
+
+
     std::any LLVMIRGenerator::visitReturn(ir::instruction::IRReturn* irReturn, std::any additional)
     {
         if (irReturn->value == nullptr)

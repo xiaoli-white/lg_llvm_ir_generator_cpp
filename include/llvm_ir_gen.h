@@ -57,6 +57,7 @@ namespace lg::llvm_ir_gen
         std::any visitCompare(ir::instruction::IRCompare* irCompare, std::any additional) override;
         std::any visitConditionalJump(ir::instruction::IRConditionalJump* irConditionalJump, std::any additional) override;
         std::any visitGoto(ir::instruction::IRGoto* irGoto, std::any additional) override;
+        std::any visitInvoke(ir::instruction::IRInvoke* irInvoke, std::any additional) override;
         std::any visitReturn(ir::instruction::IRReturn* irReturn, std::any additional) override;
         std::any visitRegister(ir::value::IRRegister* irRegister, std::any additional) override;
         std::any visitIntegerConstant(ir::value::constant::IRIntegerConstant* irIntegerConstant, std::any additional) override;
