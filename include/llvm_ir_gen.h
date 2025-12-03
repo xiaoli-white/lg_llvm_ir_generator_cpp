@@ -85,7 +85,7 @@ namespace lg::llvm_ir_gen
         std::any visitArrayType(ir::type::IRArrayType* irArrayType, std::any additional) override;
         std::any visitPointerType(ir::type::IRPointerType* irPointerType, std::any additional) override;
         // std::any visitStructureType(ir::type::IRStructureType* irStructureType, std::any additional) override;
-        // std::any visitFunctionReferenceType(ir::type::IRFunctionReferenceType* irFunctionReferenceType, std::any additional) override;
+        std::any visitFunctionReferenceType(ir::type::IRFunctionReferenceType* irFunctionReferenceType, std::any additional) override;
     };
     void compile(llvm::Module* module, std::string triple, std::string output);
 }

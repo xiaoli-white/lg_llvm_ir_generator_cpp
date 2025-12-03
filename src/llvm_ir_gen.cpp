@@ -809,6 +809,24 @@ namespace lg::llvm_ir_gen
         return nullptr;
     }
 
+    std::any LLVMIRGenerator::visitFunctionReferenceType(ir::type::IRFunctionReferenceType* irFunctionReferenceType,
+                                                         std::any additional)
+    {
+        visit(irFunctionReferenceType->returnType, additional);
+        auto* returnType = std::any_cast<llvm::Type*>(stack.top());
+        stack.pop();
+        std::vector<llvm::Type*> parameterTypes;
+        for (const auto& parameterType : irFunctionReferenceType->parameterTypes)
+        {
+            visit(parameterType, additional);
+            parameterTypes.push_back(std::any_cast<llvm::Type*>(stack.top()));
+            stack.pop();
+        }
+        stack.push(std::make_any<llvm::Type*>(
+            llvm::FunctionType::get(returnType, parameterTypes, irFunctionReferenceType->isVarArg)));
+        return nullptr;
+    }
+
     std::any LLVMIRGenerator::visitArrayType(ir::type::IRArrayType* irArrayType, std::any additional)
     {
         visit(irArrayType->base, additional);
