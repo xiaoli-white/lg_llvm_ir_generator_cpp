@@ -528,6 +528,98 @@ namespace lg::llvm_ir_gen
         return nullptr;
     }
 
+    std::any LLVMIRGenerator::visitTypeCast(ir::instruction::IRTypeCast* irTypeCast, std::any additional)
+    {
+        visit(irTypeCast->source, additional);
+        auto* source = std::any_cast<llvm::Value*>(stack.top());
+        stack.pop();
+        visit(irTypeCast->targetType, additional);
+        auto* targetType = std::any_cast<llvm::Type*>(stack.top());
+        stack.pop();
+        llvm::Instruction::CastOps op;
+        switch (irTypeCast->kind)
+        {
+        case ir::instruction::IRTypeCast::Kind::ZEXT:
+            op = llvm::Instruction::CastOps::ZExt;
+            break;
+        case ir::instruction::IRTypeCast::Kind::SEXT:
+            op = llvm::Instruction::CastOps::SExt;
+            break;
+        case ir::instruction::IRTypeCast::Kind::TRUNC:
+            op = llvm::Instruction::CastOps::Trunc;
+            break;
+        case ir::instruction::IRTypeCast::Kind::INTTOF:
+            if (dynamic_cast<ir::type::IRIntegerType*>(irTypeCast->source->getType())->_unsigned)
+                op = llvm::Instruction::CastOps::UIToFP;
+            else
+                op = llvm::Instruction::CastOps::SIToFP;
+            break;
+        case ir::instruction::IRTypeCast::Kind::FTOINT:
+            if (dynamic_cast<ir::type::IRIntegerType*>(irTypeCast->targetType)->_unsigned)
+                op = llvm::Instruction::CastOps::FPToUI;
+            else
+                op = llvm::Instruction::CastOps::FPToSI;
+            break;
+        case ir::instruction::IRTypeCast::Kind::INTTOPTR:
+            op = llvm::Instruction::CastOps::IntToPtr;
+            break;
+        case ir::instruction::IRTypeCast::Kind::PTRTOINT:
+            op = llvm::Instruction::CastOps::PtrToInt;
+            break;
+        case ir::instruction::IRTypeCast::Kind::PTRTOPTR:
+            op = llvm::Instruction::CastOps::BitCast;
+            break;
+        case ir::instruction::IRTypeCast::Kind::FTRUNC:
+            op = llvm::Instruction::CastOps::FPTrunc;
+            break;
+        case ir::instruction::IRTypeCast::Kind::BITCAST:
+            op = llvm::Instruction::CastOps::BitCast;
+            break;
+        default:
+            throw std::runtime_error(
+                "Unsupported type cast kind: " + ir::instruction::IRTypeCast::kindToString(irTypeCast->kind));
+        }
+        auto* result = builder->CreateCast(op, source, targetType);
+        register2Value[irTypeCast->target] = result;
+        return nullptr;
+    }
+
+    std::any LLVMIRGenerator::visitPhi(ir::instruction::IRPhi* irPhi, std::any additional)
+    {
+        visit(irPhi->values.begin()->second->getType(), additional);
+        auto* ty = std::any_cast<llvm::Type*>(stack.top());
+        stack.pop();
+        auto* phiInst = builder->CreatePHI(ty, irPhi->values.size());
+        for (auto& [block, value] : irPhi->values)
+        {
+            visit(value, additional);
+            auto* llvmVal = std::any_cast<llvm::Value*>(stack.top());
+            stack.pop();
+            phiInst->addIncoming(llvmVal, irBlock2LLVMBlock[block]);
+        }
+        register2Value[irPhi->target] = phiInst;
+        return nullptr;
+    }
+
+    std::any LLVMIRGenerator::visitSwitch(ir::instruction::IRSwitch* irSwitch, std::any additional)
+    {
+        visit(irSwitch->value, additional);
+        auto* val = std::any_cast<llvm::Value*>(stack.top());
+        stack.pop();
+        auto* switchInst = builder->CreateSwitch(val, irBlock2LLVMBlock[irSwitch->defaultCase],
+                                                 irSwitch->cases.size());
+        for (auto& [value, block] : irSwitch->cases)
+        {
+            visit(value, additional);
+            auto* llvmVal = std::any_cast<llvm::Value*>(stack.top());
+            stack.pop();
+            auto* constantInt = llvm::cast<llvm::ConstantInt>(llvmVal);
+            if (!constantInt)throw std::runtime_error("Switch case value is not an integer constant");
+            switchInst->addCase(constantInt, irBlock2LLVMBlock[block]);
+        }
+        return nullptr;
+    }
+
     std::any LLVMIRGenerator::visitRegister(ir::value::IRRegister* irRegister, std::any additional)
     {
         stack.emplace(register2Value[irRegister]);
