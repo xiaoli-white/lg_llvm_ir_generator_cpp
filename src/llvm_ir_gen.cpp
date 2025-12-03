@@ -643,6 +643,42 @@ namespace lg::llvm_ir_gen
         return nullptr;
     }
 
+    std::any LLVMIRGenerator::visitFloatType(ir::type::IRFloatType* irFloatType, std::any additional)
+    {
+        stack.push(std::make_any<llvm::Type*>(llvm::Type::getFloatTy(*context)));
+        return nullptr;
+    }
+
+    std::any LLVMIRGenerator::visitDoubleType(ir::type::IRDoubleType* irDoubleType, std::any additional)
+    {
+        stack.push(std::make_any<llvm::Type*>(llvm::Type::getDoubleTy(*context)));
+        return nullptr;
+    }
+
+    std::any LLVMIRGenerator::visitVoidType(ir::type::IRVoidType* irVoidType, std::any additional)
+    {
+        stack.push(std::make_any<llvm::Type*>(llvm::Type::getVoidTy(*context)));
+        return nullptr;
+    }
+
+    std::any LLVMIRGenerator::visitPointerType(ir::type::IRPointerType* irPointerType, std::any additional)
+    {
+        visit(irPointerType->base, additional);
+        auto* base = std::any_cast<llvm::Type*>(stack.top());
+        stack.pop();
+        stack.push(std::make_any<llvm::Type*>(llvm::PointerType::get(base, 0)));
+        return nullptr;
+    }
+
+    std::any LLVMIRGenerator::visitArrayType(ir::type::IRArrayType* irArrayType, std::any additional)
+    {
+        visit(irArrayType->base, additional);
+        auto* base = std::any_cast<llvm::Type*>(stack.top());
+        stack.pop();
+        stack.push(std::make_any<llvm::Type*>(llvm::ArrayType::get(base, irArrayType->size)));
+        return nullptr;
+    }
+
     void compile(llvm::Module* module, std::string triple, std::string output)
     {
         std::string tmpFile = output + ".ll";

@@ -70,6 +70,13 @@ namespace lg::llvm_ir_gen
         std::any visitRegister(ir::value::IRRegister* irRegister, std::any additional) override;
         std::any visitIntegerConstant(ir::value::constant::IRIntegerConstant* irIntegerConstant, std::any additional) override;
         std::any visitIntegerType(ir::type::IRIntegerType* irIntegerType, std::any additional) override;
+        std::any visitFloatType(ir::type::IRFloatType* irFloatType, std::any additional) override;
+        std::any visitDoubleType(ir::type::IRDoubleType* irDoubleType, std::any additional) override;
+        std::any visitVoidType(ir::type::IRVoidType* irVoidType, std::any additional) override;
+        std::any visitArrayType(ir::type::IRArrayType* irArrayType, std::any additional) override;
+        std::any visitPointerType(ir::type::IRPointerType* irPointerType, std::any additional) override;
+        // std::any visitStructureType(ir::type::IRStructureType* irStructureType, std::any additional) override;
+        // std::any visitFunctionReferenceType(ir::type::IRFunctionReferenceType* irFunctionReferenceType, std::any additional) override;
     };
     void compile(llvm::Module* module, std::string triple, std::string output);
 }
