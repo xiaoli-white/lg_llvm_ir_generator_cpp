@@ -725,6 +725,40 @@ namespace lg::llvm_ir_gen
         return nullptr;
     }
 
+    std::any LLVMIRGenerator::visitNullptrConstant(ir::value::constant::IRNullptrConstant* irNullptrConstant,
+                                                   std::any additional)
+    {
+        stack.push(std::make_any<llvm::Value*>(
+            llvm::ConstantPointerNull::get(llvm::PointerType::get(llvm::Type::getVoidTy(*context), 0))));
+        return nullptr;
+    }
+
+    std::any LLVMIRGenerator::visitStringConstant(ir::value::constant::IRStringConstant* irStringConstant,
+                                                  std::any additional)
+    {
+        stack.push(std::make_any<llvm::Value*>(llvm::ConstantDataArray::getString(*context, irStringConstant->value)));
+        return nullptr;
+    }
+
+    std::any LLVMIRGenerator::visitArrayConstant(ir::value::constant::IRArrayConstant* irArrayConstant,
+                                                 std::any additional)
+    {
+        visit(irArrayConstant->type, additional);
+        auto* ty = std::any_cast<llvm::Type*>(stack.top());
+        stack.pop();
+        auto* arrayType = llvm::cast<llvm::ArrayType>(ty);
+        if (arrayType == nullptr) throw std::runtime_error("Array constant type is not an array type");
+        std::vector<llvm::Constant*> values;
+        for (auto& value : irArrayConstant->elements)
+        {
+            visit(value, additional);
+            auto* llvmVal = std::any_cast<llvm::Value*>(stack.top());
+            stack.pop();
+            values.push_back(llvm::cast<llvm::Constant>(llvmVal));
+        }
+        stack.push(std::make_any<llvm::Value*>(llvm::ConstantArray::get(arrayType, values)));
+        return nullptr;
+    }
 
     std::any LLVMIRGenerator::visitIntegerType(ir::type::IRIntegerType* irIntegerType, std::any additional)
     {
