@@ -52,6 +52,7 @@ namespace lg::llvm_ir_gen
         std::any visitModule(ir::IRModule* module, std::any additional) override;
         std::any visitGlobalVariable(ir::base::IRGlobalVariable* irGlobalVariable, std::any additional) override;
         std::any visitFunction(ir::function::IRFunction* irFunction, std::any additional) override;
+        std::any visitAssembly(ir::instruction::IRAssembly* irAssembly, std::any additional) override;
         std::any visitBinaryOperates(ir::instruction::IRBinaryOperates* irBinaryOperates, std::any additional) override;
         std::any visitUnaryOperates(ir::instruction::IRUnaryOperates* irUnaryOperates, std::any additional) override;
         std::any visitGetElementPointer(ir::instruction::IRGetElementPointer* irGetElementPointer, std::any additional) override;
@@ -70,6 +71,11 @@ namespace lg::llvm_ir_gen
         std::any visitSwitch(ir::instruction::IRSwitch* irSwitch, std::any additional) override;
         std::any visitRegister(ir::value::IRRegister* irRegister, std::any additional) override;
         std::any visitIntegerConstant(ir::value::constant::IRIntegerConstant* irIntegerConstant, std::any additional) override;
+        std::any visitFloatConstant(ir::value::constant::IRFloatConstant* irFloatConstant, std::any additional) override;
+        std::any visitDoubleConstant(ir::value::constant::IRDoubleConstant* irDoubleConstant, std::any additional) override;
+        std::any visitNullptrConstant(ir::value::constant::IRNullptrConstant* irNullptrConstant, std::any additional) override;
+        std::any visitStringConstant(ir::value::constant::IRStringConstant* irStringConstant, std::any additional) override;
+        std::any visitArrayConstant(ir::value::constant::IRArrayConstant* irArrayConstant, std::any additional) override;
         std::any visitIntegerType(ir::type::IRIntegerType* irIntegerType, std::any additional) override;
         std::any visitFloatType(ir::type::IRFloatType* irFloatType, std::any additional) override;
         std::any visitDoubleType(ir::type::IRDoubleType* irDoubleType, std::any additional) override;

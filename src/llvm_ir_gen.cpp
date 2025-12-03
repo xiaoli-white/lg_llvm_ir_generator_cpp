@@ -102,6 +102,24 @@ namespace lg::llvm_ir_gen
         return nullptr;
     }
 
+    std::any LLVMIRGenerator::visitAssembly(ir::instruction::IRAssembly* irAssembly, std::any additional)
+    {
+        std::vector<llvm::Value*> operands(irAssembly->operands.size());
+        std::vector<llvm::Type*> argTypes(irAssembly->operands.size());
+        for (size_t i = 0; i < irAssembly->operands.size(); ++i)
+        {
+            visit(irAssembly->operands[i], additional);
+            operands[i] = std::any_cast<llvm::Value*>(stack.top());
+            stack.pop();
+            argTypes[i] = operands[i]->getType();
+        }
+        auto* functionType = llvm::FunctionType::get(llvm::Type::getVoidTy(*context), argTypes, false);
+        auto* inlineAsm = llvm::InlineAsm::get(functionType, irAssembly->assembly, irAssembly->constraints, false);
+        builder->CreateCall(inlineAsm, operands);
+        return nullptr;
+    }
+
+
     std::any LLVMIRGenerator::visitBinaryOperates(ir::instruction::IRBinaryOperates* irBinaryOperates,
                                                   std::any additional)
     {
@@ -226,7 +244,7 @@ namespace lg::llvm_ir_gen
         case ir::instruction::IRUnaryOperates::Operator::INC:
             {
                 visit(dynamic_cast<ir::type::IRPointerType*>(irUnaryOperates->operand->getType())->base, additional);
-                auto* ty = std:: any_cast<llvm::Type*>(stack.top());
+                auto* ty = std::any_cast<llvm::Type*>(stack.top());
                 stack.pop();
                 auto* tmp = builder->CreateLoad(ty, operand);
                 auto* val = builder->CreateAdd(tmp, llvm::ConstantInt::get(ty, 1));
@@ -236,7 +254,7 @@ namespace lg::llvm_ir_gen
         case ir::instruction::IRUnaryOperates::Operator::DEC:
             {
                 visit(dynamic_cast<ir::type::IRPointerType*>(irUnaryOperates->operand->getType())->base, additional);
-                auto* ty = std:: any_cast<llvm::Type*>(stack.top());
+                auto* ty = std::any_cast<llvm::Type*>(stack.top());
                 stack.pop();
                 auto* tmp = builder->CreateLoad(ty, operand);
                 auto* val = builder->CreateSub(tmp, llvm::ConstantInt::get(ty, 1));
@@ -688,6 +706,22 @@ namespace lg::llvm_ir_gen
         stack.push(std::make_any<llvm::Value*>(llvm::ConstantInt::get(
             *context, llvm::APInt(static_cast<uint32_t>(irIntegerConstant->type->size), irIntegerConstant->value,
                                   irIntegerConstant->type->_unsigned))));
+        return nullptr;
+    }
+
+    std::any LLVMIRGenerator::visitFloatConstant(ir::value::constant::IRFloatConstant* irFloatConstant,
+                                                 std::any additional)
+    {
+        stack.push(std::make_any<llvm::Value*>(llvm::ConstantFP::get(
+            *context, llvm::APFloat(irFloatConstant->value))));
+        return nullptr;
+    }
+
+    std::any LLVMIRGenerator::visitDoubleConstant(ir::value::constant::IRDoubleConstant* irDoubleConstant,
+                                                  std::any additional)
+    {
+        stack.push(std::make_any<llvm::Value*>(
+            llvm::ConstantFP::get(llvm::Type::getDoubleTy(*context), irDoubleConstant->value)));
         return nullptr;
     }
 
