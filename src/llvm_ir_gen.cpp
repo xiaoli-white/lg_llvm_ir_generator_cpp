@@ -41,10 +41,6 @@ namespace lg::llvm_ir_gen
                 global->name
             );
         }
-        for (const auto& global : module->globals | std::views::values)
-        {
-            visit(global, additional);
-        }
         for (const auto& func : module->functions | std::views::values)
         {
             visit(func->returnType, additional);
@@ -65,6 +61,10 @@ namespace lg::llvm_ir_gen
                 llvmModule
             );
             for (auto& arg : llvmFunction->args())arg.setName(func->args[arg.getArgNo()]->name);
+        }
+        for (const auto& global : module->globals | std::views::values)
+        {
+            visit(global, additional);
         }
         for (const auto& func : module->functions | std::views::values)
         {
