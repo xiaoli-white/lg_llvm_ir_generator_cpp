@@ -707,6 +707,14 @@ namespace lg::llvm_ir_gen
         return nullptr;
     }
 
+    std::any LLVMIRGenerator::visitGlobalVariableReference(
+        ir::value::constant::IRGlobalVariableReference* irGlobalVariableReference, std::any additional)
+    {
+        stack.push(
+            std::make_any<llvm::Value*>(llvmModule->getGlobalVariable(irGlobalVariableReference->variable->name)));
+        return nullptr;
+    }
+
     std::any LLVMIRGenerator::visitIntegerConstant(ir::value::constant::IRIntegerConstant* irIntegerConstant,
                                                    std::any additional)
     {

@@ -71,6 +71,7 @@ namespace lg::llvm_ir_gen
         std::any visitSwitch(ir::instruction::IRSwitch* irSwitch, std::any additional) override;
         std::any visitRegister(ir::value::IRRegister* irRegister, std::any additional) override;
         std::any visitFunctionReference(ir::value::constant::IRFunctionReference* irFunctionReference, std::any additional) override;
+        std::any visitGlobalVariableReference(ir::value::constant::IRGlobalVariableReference* irGlobalVariableReference, std::any additional) override;
         std::any visitIntegerConstant(ir::value::constant::IRIntegerConstant* irIntegerConstant, std::any additional) override;
         std::any visitFloatConstant(ir::value::constant::IRFloatConstant* irFloatConstant, std::any additional) override;
         std::any visitDoubleConstant(ir::value::constant::IRDoubleConstant* irDoubleConstant, std::any additional) override;
