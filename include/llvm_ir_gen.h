@@ -53,6 +53,7 @@ namespace lg::llvm_ir_gen
         std::any visitGlobalVariable(ir::base::IRGlobalVariable* irGlobalVariable, std::any additional) override;
         std::any visitFunction(ir::function::IRFunction* irFunction, std::any additional) override;
         std::any visitBinaryOperates(ir::instruction::IRBinaryOperates* irBinaryOperates, std::any additional) override;
+        std::any visitUnaryOperates(ir::instruction::IRUnaryOperates* irUnaryOperates, std::any additional) override;
         std::any visitGetElementPointer(ir::instruction::IRGetElementPointer* irGetElementPointer, std::any additional) override;
         std::any visitCompare(ir::instruction::IRCompare* irCompare, std::any additional) override;
         std::any visitConditionalJump(ir::instruction::IRConditionalJump* irConditionalJump, std::any additional) override;

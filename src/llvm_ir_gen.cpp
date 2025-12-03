@@ -116,17 +116,26 @@ namespace lg::llvm_ir_gen
         {
         case ir::instruction::IRBinaryOperates::Operator::ADD:
             {
-                result = builder->CreateAdd(operand1, operand2);
+                if (dynamic_cast<ir::type::IRIntegerType*>(irBinaryOperates->operand1->getType()))
+                    result = builder->CreateAdd(operand1, operand2);
+                else
+                    result = builder->CreateFAdd(operand1, operand2);
                 break;
             }
         case ir::instruction::IRBinaryOperates::Operator::SUB:
             {
-                result = builder->CreateSub(operand1, operand2);
+                if (dynamic_cast<ir::type::IRIntegerType*>(irBinaryOperates->operand1->getType()))
+                    result = builder->CreateSub(operand1, operand2);
+                else
+                    result = builder->CreateFSub(operand1, operand2);
                 break;
             }
         case ir::instruction::IRBinaryOperates::Operator::MUL:
             {
-                result = builder->CreateMul(operand1, operand2);
+                if (dynamic_cast<ir::type::IRIntegerType*>(irBinaryOperates->operand1->getType()))
+                    result = builder->CreateMul(operand1, operand2);
+                else
+                    result = builder->CreateFMul(operand1, operand2);
                 break;
             }
         case ir::instruction::IRBinaryOperates::Operator::DIV:
@@ -205,6 +214,53 @@ namespace lg::llvm_ir_gen
         register2Value[irBinaryOperates->target] = result;
         return nullptr;
     }
+
+    std::any LLVMIRGenerator::visitUnaryOperates(ir::instruction::IRUnaryOperates* irUnaryOperates, std::any additional)
+    {
+        visit(irUnaryOperates->operand, additional);
+        auto* operand = std::any_cast<llvm::Value*>(stack.top());
+        stack.pop();
+        llvm::Value* result;
+        switch (irUnaryOperates->op)
+        {
+        case ir::instruction::IRUnaryOperates::Operator::INC:
+            {
+                visit(dynamic_cast<ir::type::IRPointerType*>(irUnaryOperates->operand->getType())->base, additional);
+                auto* ty = std:: any_cast<llvm::Type*>(stack.top());
+                stack.pop();
+                auto* tmp = builder->CreateLoad(ty, operand);
+                auto* val = builder->CreateAdd(tmp, llvm::ConstantInt::get(ty, 1));
+                result = builder->CreateStore(val, operand);
+                break;
+            }
+        case ir::instruction::IRUnaryOperates::Operator::DEC:
+            {
+                visit(dynamic_cast<ir::type::IRPointerType*>(irUnaryOperates->operand->getType())->base, additional);
+                auto* ty = std:: any_cast<llvm::Type*>(stack.top());
+                stack.pop();
+                auto* tmp = builder->CreateLoad(ty, operand);
+                auto* val = builder->CreateSub(tmp, llvm::ConstantInt::get(ty, 1));
+                result = builder->CreateStore(val, operand);
+                break;
+            }
+        case ir::instruction::IRUnaryOperates::Operator::NOT:
+            {
+                result = builder->CreateNot(operand);
+                break;
+            }
+        case ir::instruction::IRUnaryOperates::Operator::NEG:
+            {
+                result = builder->CreateNeg(operand);
+                break;
+            }
+        default:
+            throw std::runtime_error(
+                "unsupported operator: " + ir::instruction::IRUnaryOperates::operatorToString(irUnaryOperates->op));
+        }
+        register2Value[irUnaryOperates->target] = result;
+        return nullptr;
+    }
+
 
     std::any LLVMIRGenerator::visitGetElementPointer(ir::instruction::IRGetElementPointer* irGetElementPointer,
                                                      std::any additional)
