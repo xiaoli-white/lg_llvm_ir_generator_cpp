@@ -13,9 +13,9 @@ find_package(antlr4-runtime REQUIRED)
 set(llvm_components core irreader support analysis passes codegen target mc object linker option)
 llvm_map_components_to_libnames(llvm_libs ${llvm_components})
 
-include_directories(${ANTLR4_INCLUDE_DIR} lg_cpp_binding/include/ include/)
+include_directories(${ANTLR4_INCLUDE_DIR} lg-cpp/include/ include/)
 
-add_subdirectory(lg_cpp_binding)
+add_subdirectory(lg-cpp)
 
 add_executable(lg_llvm_ir_generator_cpp
         src/main.cpp

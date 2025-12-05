@@ -4,7 +4,7 @@
 
 #ifndef LG_LLVM_IR_GENERATOR_CPP_LLVM_IR_GEN_H
 #define LG_LLVM_IR_GENERATOR_CPP_LLVM_IR_GEN_H
-#include <lg-cpp-binding.h>
+#include <lg/ir.h>
 #include <llvm/Bitcode/BitcodeWriter.h>
 #include <llvm/Support/FileSystem.h>
 #include <llvm/Support/Path.h>
@@ -30,6 +30,8 @@
 #include <clang/Basic/DiagnosticIDs.h>
 #include <llvm/Support/VirtualFileSystem.h>
 
+#include <stack>
+
 namespace lg::llvm_ir_gen
 {
     class LLVMIRGenerator final: public ir::IRVisitor
@@ -43,6 +45,7 @@ namespace lg::llvm_ir_gen
         std::stack<std::any> stack;
         std::unordered_map<ir::base::IRGlobalVariable*, llvm::GlobalVariable*> irGlobalVariable2LLVMGlobalVariable;
         std::unordered_map<ir::base::IRBasicBlock*, llvm::BasicBlock*> irBlock2LLVMBlock;
+        std::unordered_map<ir::function::IRLocalVariable*, llvm::Value*> irLocalVariable2Value;
         std::unordered_map<ir::value::IRRegister*, llvm::Value*> register2Value;
     public:
         LLVMIRGenerator(ir::IRModule* module,llvm::LLVMContext* context, llvm::Module* llvmModule);
@@ -70,6 +73,7 @@ namespace lg::llvm_ir_gen
         std::any visitPhi(ir::instruction::IRPhi* irPhi, std::any additional) override;
         std::any visitSwitch(ir::instruction::IRSwitch* irSwitch, std::any additional) override;
         std::any visitRegister(ir::value::IRRegister* irRegister, std::any additional) override;
+        std::any visitLocalVariableReference(ir::value::IRLocalVariableReference* irLocalVariableReference, std::any additional) override;
         std::any visitFunctionReference(ir::value::constant::IRFunctionReference* irFunctionReference, std::any additional) override;
         std::any visitGlobalVariableReference(ir::value::constant::IRGlobalVariableReference* irGlobalVariableReference, std::any additional) override;
         std::any visitIntegerConstant(ir::value::constant::IRIntegerConstant* irIntegerConstant, std::any additional) override;

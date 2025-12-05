@@ -47,9 +47,9 @@ namespace lg::llvm_ir_gen
             const auto returnType = std::any_cast<llvm::Type*>(stack.top());
             stack.pop();
             std::vector<llvm::Type*> args;
-            for (auto& arg : func->args)
+            for (const auto& arg : func->args)
             {
-                visit(arg, additional);
+                visit(arg->type, additional);
                 args.push_back(std::any_cast<llvm::Type*>(stack.top()));
                 stack.pop();
             }
@@ -86,19 +86,44 @@ namespace lg::llvm_ir_gen
 
     std::any LLVMIRGenerator::visitFunction(ir::function::IRFunction* irFunction, std::any additional)
     {
-        currentFunction = llvmModule->getFunction(irFunction->name);
-        for (const auto& block : irFunction->cfg->basicBlocks | std::views::values)
+        if (!irFunction->isExtern)
         {
-            llvm::BasicBlock* llvmBlock = llvm::BasicBlock::Create(*context, block->name, currentFunction);
-            irBlock2LLVMBlock[block] = llvmBlock;
+            currentFunction = llvmModule->getFunction(irFunction->name);
+            llvm::BasicBlock* initBlock = llvm::BasicBlock::Create(*context, "init_frame", currentFunction);
+            for (const auto& block : irFunction->cfg->basicBlocks | std::views::values)
+            {
+                llvm::BasicBlock* llvmBlock = llvm::BasicBlock::Create(*context, block->name, currentFunction);
+                irBlock2LLVMBlock[block] = llvmBlock;
+            }
+            builder->SetInsertPoint(initBlock);
+            for (size_t i = 0; i < irFunction->args.size(); ++i)
+            {
+                auto* arg = irFunction->args[i];
+                visit(arg->type, additional);
+                auto* ty = std::any_cast<llvm::Type*>(stack.top());
+                stack.pop();
+                auto* ptr = builder->CreateAlloca(ty);
+                builder->CreateStore(currentFunction->getArg(i), ptr);
+                irLocalVariable2Value[arg] = ptr;
+            }
+            for (const auto& local : irFunction->locals)
+            {
+                visit(local->type, additional);
+                auto* ty = std::any_cast<llvm::Type*>(stack.top());
+                stack.pop();
+                auto* ptr = builder->CreateAlloca(ty);
+                irLocalVariable2Value[local] = ptr;
+            }
+            builder->CreateBr(initBlock->getNextNode());
+            for (const auto& block : irFunction->cfg->basicBlocks | std::views::values)
+            {
+                builder->SetInsertPoint(irBlock2LLVMBlock[block]);
+                for (const auto& instruction : block->instructions)visit(instruction, additional);
+            }
+            irBlock2LLVMBlock.clear();
+            irLocalVariable2Value.clear();
+            register2Value.clear();
         }
-        for (const auto& block : irFunction->cfg->basicBlocks | std::views::values)
-        {
-            builder->SetInsertPoint(irBlock2LLVMBlock[block]);
-            for (const auto& instruction : block->instructions)visit(instruction, additional);
-        }
-        irBlock2LLVMBlock.clear();
-        register2Value.clear();
         return nullptr;
     }
 
@@ -700,6 +725,13 @@ namespace lg::llvm_ir_gen
         return nullptr;
     }
 
+    std::any LLVMIRGenerator::visitLocalVariableReference(ir::value::IRLocalVariableReference* irLocalVariableReference,
+                                                          std::any additional)
+    {
+        stack.emplace(irLocalVariable2Value[irLocalVariableReference->variable]);
+        return nullptr;
+    }
+
     std::any LLVMIRGenerator::visitFunctionReference(ir::value::constant::IRFunctionReference* irFunctionReference,
                                                      std::any additional)
     {
@@ -727,8 +759,8 @@ namespace lg::llvm_ir_gen
     std::any LLVMIRGenerator::visitFloatConstant(ir::value::constant::IRFloatConstant* irFloatConstant,
                                                  std::any additional)
     {
-        stack.push(std::make_any<llvm::Value*>(llvm::ConstantFP::get(
-            *context, llvm::APFloat(irFloatConstant->value))));
+        stack.push(std::make_any<llvm::Value*>(
+            llvm::ConstantFP::get(llvm::Type::getFloatTy(*context), irFloatConstant->value)));
         return nullptr;
     }
 

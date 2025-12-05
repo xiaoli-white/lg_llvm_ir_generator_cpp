@@ -1,6 +1,7 @@
 #include <iostream>
 
-#include <lg-cpp-binding.h>
+#include <lg/parser.h>
+#include <lg/dumper.h>
 
 #include "llvm_ir_gen.h"
 
@@ -10,6 +11,9 @@ int main()
                        "const global bbb = i32 2"
                        "function i32 main(){}{"
                        "entry:"
+                       "\t%114 = stack_alloc i32"
+                       "\t%115 = ptrtoptr i32* %114 to u8*"
+                       "\t%116 = load u8* %115"
                        "\t%1 = add i32 1, i32 2"
                        "\t%2 = cmp le, i32 1, i32 2"
                        "\tnop"
@@ -17,7 +21,12 @@ int main()
                        // "\tgoto label exit "
                        "exit:"
                        "\treturn i32 %1"
-                       "}";
+                       "}"
+                       "function void f(i8 a){}{"
+                       "entry:"
+                       "\treturn"
+                       "}"
+                       "extern function void* malloc(i32 size)";
     const auto module = lg::ir::parser::parse(code);
     std::cout << "==============LG IR============" << std::endl;
     lg::ir::IRDumper dumper;
