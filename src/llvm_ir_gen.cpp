@@ -57,7 +57,7 @@ namespace lg::llvm_ir_gen
                 args.push_back(std::any_cast<llvm::Type*>(stack.top()));
                 stack.pop();
             }
-            const auto functionType = llvm::FunctionType::get(returnType, args, false);
+            const auto functionType = llvm::FunctionType::get(returnType, args, func->isVarArg);
             llvm::Function* llvmFunction = llvm::Function::Create(
                 functionType,
                 llvm::Function::ExternalLinkage,
@@ -337,7 +337,7 @@ namespace lg::llvm_ir_gen
         visit(irGetElementPointer->pointer, additional);
         auto* ptr = std::any_cast<llvm::Value*>(stack.top());
         stack.pop();
-        std::vector<llvm::Value*> indices(irGetElementPointer->indices.size());
+        std::vector<llvm::Value*> indices;
         for (const auto& index : irGetElementPointer->indices)
         {
             visit(index, additional);
@@ -345,7 +345,7 @@ namespace lg::llvm_ir_gen
             stack.pop();
             indices.push_back(indexValue);
         }
-        auto* result = builder->CreateGEP(type, ptr, std::move(indices));
+        auto* result = builder->CreateGEP(type, ptr, indices);
         register2Value[irGetElementPointer->target] = result;
         return nullptr;
     }

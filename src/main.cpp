@@ -23,11 +23,9 @@ int main()
                        "exit:"
                        "\t%3 = invoke void* funcref malloc(i32 4)"
                        "\tinvoke void funcref free(void* %3)"
+                       "\t%fmtstr = getelementptr globalref f, i32 0, i32 0"
+                       "\t%ret = invoke i32 funcref printf(u8* %fmtstr, i32 1)"
                        "\treturn i32 %1"
-                       "}"
-                       "function void f(i8 a){}{"
-                       "entry:"
-                       "\treturn"
                        "}"
                        "extern function void* malloc(i32 size)"
                        "extern function void free(void* ptr)"
@@ -37,7 +35,9 @@ int main()
                        "}"
                        "structure B {"
                        "\tu64 c"
-                       "}";
+                       "}"
+                       "extern function i32 printf(u8* fmt, ...)"
+                       "global f = string \"%d\n\"";
     const auto module = lg::ir::parser::parse(code);
     std::cout << "==============LG IR============" << std::endl;
     lg::ir::IRDumper dumper;
