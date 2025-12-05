@@ -34,7 +34,7 @@
 
 namespace lg::llvm_ir_gen
 {
-    class LLVMIRGenerator final: public ir::IRVisitor
+    class LLVMIRGenerator final : public ir::IRVisitor
     {
     private:
         ir::IRModule* module;
@@ -43,24 +43,29 @@ namespace lg::llvm_ir_gen
         llvm::IRBuilder<>* builder;
         llvm::Function* currentFunction = nullptr;
         std::stack<std::any> stack;
+        std::unordered_map<ir::structure::IRStructure*, llvm::StructType*> irStructure2LLVMStructureType;
         std::unordered_map<ir::base::IRGlobalVariable*, llvm::GlobalVariable*> irGlobalVariable2LLVMGlobalVariable;
         std::unordered_map<ir::base::IRBasicBlock*, llvm::BasicBlock*> irBlock2LLVMBlock;
         std::unordered_map<ir::function::IRLocalVariable*, llvm::Value*> irLocalVariable2Value;
         std::unordered_map<ir::value::IRRegister*, llvm::Value*> register2Value;
+
     public:
-        LLVMIRGenerator(ir::IRModule* module,llvm::LLVMContext* context, llvm::Module* llvmModule);
+        LLVMIRGenerator(ir::IRModule* module, llvm::LLVMContext* context, llvm::Module* llvmModule);
         ~LLVMIRGenerator() override;
         std::string generate();
 
         std::any visitModule(ir::IRModule* module, std::any additional) override;
         std::any visitGlobalVariable(ir::base::IRGlobalVariable* irGlobalVariable, std::any additional) override;
+        std::any visitStructure(ir::structure::IRStructure* irStructure, std::any additional) override;
         std::any visitFunction(ir::function::IRFunction* irFunction, std::any additional) override;
         std::any visitAssembly(ir::instruction::IRAssembly* irAssembly, std::any additional) override;
         std::any visitBinaryOperates(ir::instruction::IRBinaryOperates* irBinaryOperates, std::any additional) override;
         std::any visitUnaryOperates(ir::instruction::IRUnaryOperates* irUnaryOperates, std::any additional) override;
-        std::any visitGetElementPointer(ir::instruction::IRGetElementPointer* irGetElementPointer, std::any additional) override;
+        std::any visitGetElementPointer(ir::instruction::IRGetElementPointer* irGetElementPointer,
+                                        std::any additional) override;
         std::any visitCompare(ir::instruction::IRCompare* irCompare, std::any additional) override;
-        std::any visitConditionalJump(ir::instruction::IRConditionalJump* irConditionalJump, std::any additional) override;
+        std::any visitConditionalJump(ir::instruction::IRConditionalJump* irConditionalJump,
+                                      std::any additional) override;
         std::any visitGoto(ir::instruction::IRGoto* irGoto, std::any additional) override;
         std::any visitInvoke(ir::instruction::IRInvoke* irInvoke, std::any additional) override;
         std::any visitReturn(ir::instruction::IRReturn* irReturn, std::any additional) override;
@@ -73,24 +78,36 @@ namespace lg::llvm_ir_gen
         std::any visitPhi(ir::instruction::IRPhi* irPhi, std::any additional) override;
         std::any visitSwitch(ir::instruction::IRSwitch* irSwitch, std::any additional) override;
         std::any visitRegister(ir::value::IRRegister* irRegister, std::any additional) override;
-        std::any visitLocalVariableReference(ir::value::IRLocalVariableReference* irLocalVariableReference, std::any additional) override;
-        std::any visitFunctionReference(ir::value::constant::IRFunctionReference* irFunctionReference, std::any additional) override;
-        std::any visitGlobalVariableReference(ir::value::constant::IRGlobalVariableReference* irGlobalVariableReference, std::any additional) override;
-        std::any visitIntegerConstant(ir::value::constant::IRIntegerConstant* irIntegerConstant, std::any additional) override;
-        std::any visitFloatConstant(ir::value::constant::IRFloatConstant* irFloatConstant, std::any additional) override;
-        std::any visitDoubleConstant(ir::value::constant::IRDoubleConstant* irDoubleConstant, std::any additional) override;
-        std::any visitNullptrConstant(ir::value::constant::IRNullptrConstant* irNullptrConstant, std::any additional) override;
-        std::any visitStringConstant(ir::value::constant::IRStringConstant* irStringConstant, std::any additional) override;
-        std::any visitArrayConstant(ir::value::constant::IRArrayConstant* irArrayConstant, std::any additional) override;
+        std::any visitLocalVariableReference(ir::value::IRLocalVariableReference* irLocalVariableReference,
+                                             std::any additional) override;
+        std::any visitFunctionReference(ir::value::constant::IRFunctionReference* irFunctionReference,
+                                        std::any additional) override;
+        std::any visitGlobalVariableReference(ir::value::constant::IRGlobalVariableReference* irGlobalVariableReference,
+                                              std::any additional) override;
+        std::any visitIntegerConstant(ir::value::constant::IRIntegerConstant* irIntegerConstant,
+                                      std::any additional) override;
+        std::any visitFloatConstant(ir::value::constant::IRFloatConstant* irFloatConstant,
+                                    std::any additional) override;
+        std::any visitDoubleConstant(ir::value::constant::IRDoubleConstant* irDoubleConstant,
+                                     std::any additional) override;
+        std::any visitNullptrConstant(ir::value::constant::IRNullptrConstant* irNullptrConstant,
+                                      std::any additional) override;
+        std::any visitStringConstant(ir::value::constant::IRStringConstant* irStringConstant,
+                                     std::any additional) override;
+        std::any visitArrayConstant(ir::value::constant::IRArrayConstant* irArrayConstant,
+                                    std::any additional) override;
+        std::any visitStructureInitializer(ir::value::constant::IRStructureInitializer* irStructureInitializer, std::any additional) override;
         std::any visitIntegerType(ir::type::IRIntegerType* irIntegerType, std::any additional) override;
         std::any visitFloatType(ir::type::IRFloatType* irFloatType, std::any additional) override;
         std::any visitDoubleType(ir::type::IRDoubleType* irDoubleType, std::any additional) override;
         std::any visitVoidType(ir::type::IRVoidType* irVoidType, std::any additional) override;
         std::any visitArrayType(ir::type::IRArrayType* irArrayType, std::any additional) override;
         std::any visitPointerType(ir::type::IRPointerType* irPointerType, std::any additional) override;
-        // std::any visitStructureType(ir::type::IRStructureType* irStructureType, std::any additional) override;
-        std::any visitFunctionReferenceType(ir::type::IRFunctionReferenceType* irFunctionReferenceType, std::any additional) override;
+        std::any visitStructureType(ir::type::IRStructureType* irStructureType, std::any additional) override;
+        std::any visitFunctionReferenceType(ir::type::IRFunctionReferenceType* irFunctionReferenceType,
+                                            std::any additional) override;
     };
+
     void compile(llvm::Module* module, std::string triple, std::string output);
 }
 

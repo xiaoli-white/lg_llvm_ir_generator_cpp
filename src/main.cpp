@@ -9,6 +9,7 @@ int main()
 {
     std::string code = "global aaa = i32 1 "
                        "const global bbb = i32 2"
+                       "global structTest = constant structure A { i32 1, constant structure B { u64 2 } }"
                        "function i32 main(){}{"
                        "entry:"
                        "\t%114 = stack_alloc i32"
@@ -20,13 +21,23 @@ int main()
                        "\tconditional_jump if_false, i1 %2, label exit "
                        // "\tgoto label exit "
                        "exit:"
+                       "\t%3 = invoke void* funcref malloc(i32 4)"
+                       "\tinvoke void funcref free(void* %3)"
                        "\treturn i32 %1"
                        "}"
                        "function void f(i8 a){}{"
                        "entry:"
                        "\treturn"
                        "}"
-                       "extern function void* malloc(i32 size)";
+                       "extern function void* malloc(i32 size)"
+                       "extern function void free(void* ptr)"
+                       "structure A {"
+                       "\ti32 a,"
+                       "\tstructure B b"
+                       "}"
+                       "structure B {"
+                       "\tu64 c"
+                       "}";
     const auto module = lg::ir::parser::parse(code);
     std::cout << "==============LG IR============" << std::endl;
     lg::ir::IRDumper dumper;

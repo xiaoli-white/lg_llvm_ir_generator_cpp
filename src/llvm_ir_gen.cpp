@@ -27,6 +27,10 @@ namespace lg::llvm_ir_gen
 
     std::any LLVMIRGenerator::visitModule(ir::IRModule* module, std::any additional)
     {
+        for (const auto& structure : module->structures | std::views::values)
+        {
+            irStructure2LLVMStructureType[structure] = llvm::StructType::create(*context, structure->name);
+        }
         for (const auto& global : module->globals | std::views::values)
         {
             visit(global->type, additional);
@@ -62,6 +66,10 @@ namespace lg::llvm_ir_gen
             );
             for (auto& arg : llvmFunction->args())arg.setName(func->args[arg.getArgNo()]->name);
         }
+        for (const auto& structure : module->structures | std::views::values)
+        {
+            visit(structure, additional);
+        }
         for (const auto& global : module->globals | std::views::values)
         {
             visit(global, additional);
@@ -72,6 +80,21 @@ namespace lg::llvm_ir_gen
         }
         return nullptr;
     }
+
+    std::any LLVMIRGenerator::visitStructure(ir::structure::IRStructure* irStructure, std::any additional)
+    {
+        std::vector<llvm::Type*> fields;
+        for (const auto& field : irStructure->fields)
+        {
+            visit(field->type, additional);
+            fields.push_back(std::any_cast<llvm::Type*>(stack.top()));
+            stack.pop();
+        }
+        irStructure2LLVMStructureType[irStructure]->setBody(
+            fields, std::ranges::find(irStructure->attributes, "packed") != irStructure->attributes.end());
+        return nullptr;
+    }
+
 
     std::any LLVMIRGenerator::visitGlobalVariable(ir::base::IRGlobalVariable* irGlobalVariable, std::any additional)
     {
@@ -807,6 +830,26 @@ namespace lg::llvm_ir_gen
         return nullptr;
     }
 
+    std::any LLVMIRGenerator::visitStructureInitializer(
+        ir::value::constant::IRStructureInitializer* irStructureInitializer, std::any additional)
+    {
+        visit(irStructureInitializer->type, additional);
+        auto* ty = std::any_cast<llvm::Type*>(stack.top());
+        stack.pop();
+        auto* structureType = llvm::cast<llvm::StructType>(ty);
+        std::vector<llvm::Constant*> elements;
+        for (const auto& element : irStructureInitializer->elements)
+        {
+            visit(element, additional);
+            auto* llvmVal = std::any_cast<llvm::Value*>(stack.top());
+            stack.pop();
+            elements.push_back(llvm::cast<llvm::Constant>(llvmVal));
+        }
+        stack.push(std::make_any<llvm::Value*>(llvm::ConstantStruct::get(structureType, elements)));
+        return nullptr;
+    }
+
+
     std::any LLVMIRGenerator::visitIntegerType(ir::type::IRIntegerType* irIntegerType, std::any additional)
     {
         stack.push(std::make_any<llvm::Type*>(
@@ -840,6 +883,13 @@ namespace lg::llvm_ir_gen
         stack.push(std::make_any<llvm::Type*>(llvm::PointerType::get(base, 0)));
         return nullptr;
     }
+
+    std::any LLVMIRGenerator::visitStructureType(ir::type::IRStructureType* irStructureType, std::any additional)
+    {
+        stack.emplace(std::make_any<llvm::Type*>(irStructure2LLVMStructureType[irStructureType->structure]));
+        return nullptr;
+    }
+
 
     std::any LLVMIRGenerator::visitFunctionReferenceType(ir::type::IRFunctionReferenceType* irFunctionReferenceType,
                                                          std::any additional)
